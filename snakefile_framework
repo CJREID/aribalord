@@ -1,0 +1,50 @@
+configfile:
+	"config_files/ariba_config.json"
+
+#Get reads
+sample_ids, = glob_wildcards(config['reads']+"/{sample}.R1.fastq.gz")
+#Define prefix for output folder
+output_prefix = re.sub('.*\/(.*)','\\1_output',config['reads'])
+print(output_prefix)
+
+
+#Download and prepare the most recent versions of the gene DBs
+rule get_gene_dbs:
+	output:
+		output_prefix+"/{gene_db}.fa", output_prefix+"/{gene_db}.tsv")
+	conda: 
+		"ariba-snake.yaml"
+	log:
+		"data/databases/logs"
+	shell:
+		"""
+		ariba getref 
+		ariba prepareref
+		"""
+
+#Download custom DBs and prepare
+rule get_custom_dbs:
+	output:
+		
+	conda:
+		
+	log:
+		
+	shell:
+		
+
+#Download the most recent versions of the MLST DBs
+rule get_mlst_dbs:
+	output:
+		directory("{mlst_db}.mlstdb")
+	conda: 
+		"ariba-snake.yaml"
+	shell:
+		"ariba getref foo bar foo bar foo bar"
+
+sample_ids, = glob_wildcards(config['reads']+"/{sample}.R1.fastq.gz")
+
+print(sample_ids,)
+
+
+

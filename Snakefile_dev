@@ -1,0 +1,37 @@
+import re
+
+configfile:
+	"config_files/config.json"
+
+#Get reads
+sample_ids, = glob_wildcards(config['reads']+"/{sample}.R1.fastq.gz")
+output_prefix = re.sub('.*\/(.*)','\\1_output',config['reads'])
+gene_dbs = ["plasmidfinder", "resfinder", "virulencefinder"]
+mlst_dbs = ["EC1", "EC2"]
+
+
+#custom_DB_names = ["EC_customDB
+
+#one rule to rule them all
+rule all:
+	input:
+		expand("data/databases/{gene_db}.prepareref", gene_db=gene_dbs)
+		
+#Download and prepare the most recent versions of the gene DBs
+rule get_gene_dbs:
+	output:
+		db = "data/databases/{gene_db}.fa", 
+		meta = "data/databases/{gene_db}.tsv",
+		prep = directory("data/databases/{gene_db}.prepareref")
+	conda: 
+		"config_files/ariba_snake.yaml"
+	log:
+		"data/databases/logs/{gene_db}.access.log"
+	params:
+		prefix = "{gene_db}", gene_db=gene_dbs
+	shell:
+		"""
+		ariba getref {params.prefix} data/databases/{params.prefix} > {log}
+		ariba prepareref -f {output.db} -m {output.meta} {output.prep}
+		"""
+
