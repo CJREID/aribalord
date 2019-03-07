@@ -1,28 +1,43 @@
 import re
+import subprocess
 
 configfile:
-	"config_files/config.json"
+	"config_files/config.yaml"
 
 #Get reads
-sample_ids, = glob_wildcards(config['reads']+"/{sample}.R1.fastq.gz")
-output_prefix = re.sub('.*\/(.*)','\\1_output',config['reads'])
-gene_dbs = ["plasmidfinder", "resfinder", "virulencefinder"]
-mlst_dbs = ["EC1", "EC2"]
+sample_ids, = glob_wildcards(config['read_path']+"/{sample}.R1.fastq.gz")
+output_prefix = re.sub('.*\/(.*)','\\1_output',config['read_path'])
+gene_dbs = expand(config['gene_dbs'])
+mlst_dbs = expand(config['mlst_dbs'])
+mlst_names = expand(config['mlst_names'])
+
+#Download custom databases
+subprocess.call("mkdir -p data/databases/custom", shell=True)
+subprocess.call("wget https://raw.githubusercontent.com/CJREID/custom_DBs/master/EC_custom.fa -O data/databases/custom/EC_custom.fa", shell=True)
+subprocess.call("wget https://raw.githubusercontent.com/CJREID/custom_DBs/master/E_coli_phylogroup.fa -O data/databases/custom/E_coli_phylogroup.fa", shell=True)
+subprocess.call("wget https://raw.githubusercontent.com/CJREID/custom_DBs/master/fqr_snps.fa -O data/databases/custom/fqr_snps.fa", shell=True)
 
 
-#custom_DB_names = ["EC_customDB
+custom_dbs, = glob_wildcards("data/databases/custom/{custom_db}.fa")
+
+print(gene_dbs)
+print(mlst_dbs)
+print(mlst_names)
+print(custom_dbs)
 
 #one rule to rule them all
 rule all:
 	input:
-		expand("data/databases/{gene_db}.prepareref", gene_db=gene_dbs)
-		
+		expand("data/databases/prepared/{gene_db}.prepareref", gene_db=gene_dbs),
+		expand("data/databases/MLST/{mlst_name}.DB", mlst_name=mlst_names),
+		expand("data/databases/custom/{custom_db}.prepareref", custom_db=custom_dbs)
+
 #Download and prepare the most recent versions of the gene DBs
 rule get_gene_dbs:
 	output:
-		db = "data/databases/{gene_db}.fa", 
-		meta = "data/databases/{gene_db}.tsv",
-		prep = directory("data/databases/{gene_db}.prepareref")
+		db = "data/databases/CGE/{gene_db}.fa", 
+		meta = "data/databases/CGE/{gene_db}.tsv",
+		prep = directory("data/databases/prepared/{gene_db}.prepareref")
 	conda: 
 		"config_files/ariba_snake.yaml"
 	log:
@@ -31,7 +46,42 @@ rule get_gene_dbs:
 		prefix = "{gene_db}", gene_db=gene_dbs
 	shell:
 		"""
-		ariba getref {params.prefix} data/databases/{params.prefix} > {log}
+		ariba getref {params.prefix} data/databases/CGE/{params.prefix} > {log}
 		ariba prepareref -f {output.db} -m {output.meta} {output.prep}
 		"""
+
+#Get MLST schemes for ARIBA to use
+rule get_mlst:
+	output: 
+		directory("data/databases/MLST/{mlst_name}.DB")
+	conda:
+		"config_files/ariba_snake.yaml"	
+	params:
+		db = config['mlst_dbs']
+	shell:
+		"""
+		ariba pubmlstget "{params.db}" {output}
+		"""
+
+#Custom DBs. Need to be able to take either a URL for download or a path to a fasta file
+#then potentially invoke different rules based on different inputs from the config file
+
+rule prep_custom:
+	input:
+		"data/databases/custom/{custom_db}.fa"
+	output:
+		directory("data/databases/custom/{custom_db}.prepareref")
+	conda: 
+		"config_files/ariba_snake.yaml"
+	shell:
+		"""
+		ariba prepareref --all_coding no -f {input} {output}
+		cp -r data/databases/custom/*.prepareref data/databases/prepared
+		"""
+
+	
+
+
+
+
 

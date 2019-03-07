@@ -1,0 +1,16 @@
+###Configuration for aribalord
+
+# path to reads
+read_path: /home/cjreid/Data/H22
+
+# standard gene databases to use for ariba
+gene_dbs: ['plasmidfinder', 'resfinder', 'virulencefinder']
+
+# MLST scheme to use
+mlst_dbs: ['Escherichia coli#1']
+
+# the output name you want for your MLST DBs
+mlst_names: ['EC1']
+
+#path to additional db fastas: optional. If you do not provide custom databases aribalord it will still download and screen serotypes, phylogroups, our E. coli custom DB and FQR SNPs
+extra_dbs: 
